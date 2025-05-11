@@ -5,3 +5,7 @@ edition = "2021"
 
 [dependencies]
 axstd = { workspace = true, optional = true }
+
+[features]
+default = ["axstd"] 
+axstd = ["dep:axstd"]  

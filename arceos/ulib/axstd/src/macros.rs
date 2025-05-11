@@ -6,18 +6,21 @@
 /// the end of the message.
 ///
 /// [`println!`]: crate::println
+
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => {
-        $crate::io::__print_impl(format_args!($($arg)*));
-    }
+        $crate::io::__print_impl(format_args!("\x1b[34m{}\x1b[0m", format_args!($($arg)*)));
+    };
 }
 
 /// Prints to the standard output, with a newline.
 #[macro_export]
 macro_rules! println {
-    () => { $crate::print!("\n") };
+    () => {
+        $crate::print!("\x1b[34m\n\x1b[0m");
+    };
     ($($arg:tt)*) => {
-        $crate::io::__print_impl(format_args!("{}\n", format_args!($($arg)*)));
-    }
+        $crate::io::__print_impl(format_args!("\x1b[34m{}\x1b[0m\n", format_args!($($arg)*)));
+    };
 }

@@ -2,6 +2,7 @@
 resolver = "2"
 
 members = [
+    "ulib/axstd",
     "modules/axalloc",
     "modules/alt_axalloc",
     "modules/axconfig",
@@ -55,6 +56,8 @@ members = [
     "exercises/sys_map",
     "exercises/simple_hv",
     "exercises/ramfs_rename",
+
+    "examples/helloworld",
 ]
 
 [workspace.package]
