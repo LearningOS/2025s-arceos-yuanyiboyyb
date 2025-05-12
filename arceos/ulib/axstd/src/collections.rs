@@ -7,7 +7,7 @@ use core::hash::{Hash, Hasher,SipHasher};
 
 use core::mem;
 
-const INITIAL_CAPACITY: usize =  100_000;
+const INITIAL_CAPACITY: usize =  150_000;
 
 pub struct HashMap<K, V>
 where
@@ -40,52 +40,61 @@ impl<K: Eq + Hash + Clone, V> HashMap<K, V> {
 
     pub fn insert(&mut self, key: K, value: V) {
         let index = self.hash(&key);
-        self.resize_if_needed();
-
-        match &self.buckets[index] {
-            Some((k, _)) if *k == key => {
-                self.buckets[index] = Some((key, value));
-            }
-            _ => {
-                self.buckets[index] = Some((key, value));
-                self.size += 1;
-            }
+        for i in 0..INITIAL_CAPACITY{
+            match &self.buckets[index+i]{
+                Some((k, _)) if *k == key => {
+                    self.buckets[index] = Some((key, value));
+                    break;
+                }
+                None =>{
+                    self.buckets[index] = Some((key, value));
+                    self.size += 1;
+                    break;
+                }
+                _ =>{}
+            } 
         }
     }
 
     pub fn get(&self, key: &K) -> Option<&V> {
         let index = self.hash(key);
-        match &self.buckets[index] {
-            Some((k, v)) if k == key => Some(v),
-            _ => None,
+        let mut answer:Option<&V> = None;
+        for i in 0..INITIAL_CAPACITY{
+             match &self.buckets[index+i]{
+                Some((k, v)) if k == key => {
+                    answer = Some(v);
+                    break;
+                }
+                None=>{
+                    break;
+                }
+                _=>{}
+             }
         }
+        answer
     }
 
     pub fn remove(&mut self, key: &K) -> Option<V> {
         let index = self.hash(key);
-        match &self.buckets[index] {
-            Some((k, v)) if k == key => {
-                let removed = self.buckets[index].take();
-                self.size -= 1;
-                removed.map(|(_, v)| v)
+        let mut answer = None;
+        for i in 0..INITIAL_CAPACITY{
+            match &self.buckets[index+i] {
+                Some((k, v)) if k == key => {
+                    let removed = self.buckets[index].take();
+                    self.size -= 1;
+                    answer = removed.map(|(_, v)| v);
+                    break;
+                }
+                None =>{
+                    break;
+                }
+                _ => {}
             }
-            _ => None,
         }
+        answer
     }
 
-    pub fn resize_if_needed(&mut self) {
-        if self.size as f64 / self.capacity as f64 > 0.6 {
-            self.resize();
-        }
-    }
 
-    fn resize(&mut self) {
-        let old_buckets = mem::replace(&mut self.buckets, Vec::with_capacity(self.capacity));
-        self.capacity *= 2;
-        for (k, v) in old_buckets.into_iter().flatten() {
-            self.insert(k, v);
-        }
-    }
 }
 
 
