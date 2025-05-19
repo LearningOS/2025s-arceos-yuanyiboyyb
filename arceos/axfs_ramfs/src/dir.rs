@@ -73,7 +73,18 @@ impl VfsNodeOps for DirNode {
     fn get_attr(&self) -> VfsResult<VfsNodeAttr> {
         Ok(VfsNodeAttr::new_dir(4096, 0))
     }
-
+    fn rename(&self,_src_path:&str,_dst_path:&str)->VfsResult{
+    /*     if !is_same_directory(_src_path, _dst_path){
+            return Err(VfsError::AddrInUse);
+        } */
+        let new_name = get_name(_dst_path).unwrap();
+        let old_name =get_name(_src_path).unwrap();
+        let mut children = self.children.write();
+        let node = children.get(&old_name).ok_or(VfsError::NotFound)?.clone();
+        children.remove(&old_name);
+        children.insert(new_name,node); 
+        Ok(())
+    }
     fn parent(&self) -> Option<VfsNodeRef> {
         self.parent.read().upgrade()
     }
@@ -173,4 +184,15 @@ fn split_path(path: &str) -> (&str, Option<&str>) {
     trimmed_path.find('/').map_or((trimmed_path, None), |n| {
         (&trimmed_path[..n], Some(&trimmed_path[n + 1..]))
     })
+}
+/* fn is_same_directory(src_path: &str, dst_path: &str) -> bool {
+    let src_parent = get_parent_path(src_path);
+    let dst_parent = get_parent_path(dst_path);
+    src_parent == dst_parent
+} */
+fn get_parent_path(path: &str) -> Option<String> {
+    path.rfind('/').map(|n| path[..n].into())
+}
+fn get_name(path:&str) -> Option<String>{
+    path.rfind('/').map(|n|path[n+1..].into())
 }

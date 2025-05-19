@@ -1,0 +1,2 @@
+    [92;1mBuilding[0m App: sys_map, Arch: riscv64, Platform: riscv64-qemu-virt, App type: rust
+[37mcargo -C exercises/sys_map/ build[0m [90m-Z unstable-options --target riscv64gc-unknown-none-elf --target-dir /home/yyb/2025s-arceos-yuanyiboyyb/arceos/target --release  --features "axstd/log-level-warn"[0m
