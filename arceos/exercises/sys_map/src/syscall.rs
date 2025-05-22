@@ -4,11 +4,15 @@ use core::ffi::{c_void, c_char, c_int};
 use axhal::arch::TrapFrame;
 use axhal::trap::{register_trap_handler, SYSCALL};
 use axerrno::LinuxError;
-use axtask::current;
+use axtask::{current, current_may_uninit};
 use axtask::TaskExtRef;
 use axhal::paging::MappingFlags;
 use arceos_posix_api as api;
-
+ use axhal::mem::phys_to_virt;
+use memory_addr::{
+    align_down_4k, is_aligned_4k, pa, va, MemoryAddr, PageIter4K, PhysAddr, VirtAddr, VirtAddrRange, PAGE_SIZE_4K,align_up_4k
+};
+use arceos_posix_api::{get_file_like};
 const SYS_IOCTL: usize = 29;
 const SYS_OPENAT: usize = 56;
 const SYS_CLOSE: usize = 57;
@@ -100,7 +104,7 @@ bitflags::bitflags! {
 fn handle_syscall(tf: &TrapFrame, syscall_num: usize) -> isize {
     ax_println!("handle_syscall [{}] ...", syscall_num);
     let ret = match syscall_num {
-         SYS_IOCTL => sys_ioctl(tf.arg0() as _, tf.arg1() as _, tf.arg2() as _) as _,
+        SYS_IOCTL => sys_ioctl(tf.arg0() as _, tf.arg1() as _, tf.arg2() as _) as _,
         SYS_SET_TID_ADDRESS => sys_set_tid_address(tf.arg0() as _),
         SYS_OPENAT => sys_openat(tf.arg0() as _, tf.arg1() as _, tf.arg2() as _, tf.arg3() as _),
         SYS_CLOSE => sys_close(tf.arg0() as _),
@@ -140,7 +144,87 @@ fn sys_mmap(
     fd: i32,
     _offset: isize,
 ) -> isize {
-    unimplemented!("no sys_mmap!");
+    const MAX_MMAP_SIZE: usize = 64;
+    let mut buf: [u8; 64] = [0u8;MAX_MMAP_SIZE];
+    unsafe {
+        let buf_ptr = &mut buf as *mut _ as *mut c_void;
+        sys_read(fd, buf_ptr, length+_offset as usize);
+    }
+    let mut buf = &buf[_offset as usize..length+_offset as usize];
+
+    let binding = current();
+    let mut uspace = &mut binding.task_ext().aspace.lock();
+
+    let free_va = if addr.is_null() {
+        uspace.find_free_area(
+            (addr as usize).into(), 
+            length, 
+            VirtAddrRange::new(
+                uspace.base(),
+                uspace.end()))
+            .unwrap_or_else(|| panic!("No free area for mmap"))
+    }else{
+        (addr as usize).into()
+    };
+
+    // 把prot转换成MappingFlags
+    let mut flags = MappingFlags::from(MmapProt::from_bits_truncate(prot));
+    flags.set(MappingFlags::USER, true);
+
+    uspace.map_alloc(
+        free_va, 
+        PAGE_SIZE_4K, 
+        flags, 
+        true)
+        .unwrap();
+    let (paddr, _, _) = uspace
+        .page_table()
+        .query(free_va)
+        .unwrap_or_else(|_| panic!("Mapping failed for segment"));
+    unsafe {
+        core::ptr::copy_nonoverlapping(
+            buf.as_ptr(),
+            phys_to_virt(paddr).as_mut_ptr(),
+            PAGE_SIZE_4K,
+        );
+    }
+    free_va.as_usize() as isize
+    /* //unimplemented!("no sys_mmap!");
+    let flags = match MmapFlags::from_bits(flags) {
+        Some(flags) => flags,
+        None => return -1, // 直接从 sys_mmap 函数返回
+    };
+    let prot = match MmapProt::from_bits(prot) {
+        Some(prot) => prot,
+        None => return -1, // 直接从 sys_mmap 函数返回
+    };
+    if !flags.contains(MmapFlags::MAP_ANONYMOUS) && fd == 0 {
+        return -1; // 直接从 sys_mmap 函数返回
+    }
+    let mut curr = current_may_uninit().unwrap();
+    let aspace = &curr.task_ext().aspace;
+    let a = match aspace.lock().map_alloc(VirtAddr::from_mut_ptr_of(addr).align_up_4k(), align_up_4k(length), prot.into(), true){
+        Ok(()) =>{
+            if fd!=0{
+                match get_file_like(fd) {  
+                    Ok(file) => {  
+                        let buf = unsafe {   
+                            core::slice::from_raw_parts_mut(addr as *mut u8, length)   
+                        };  
+                        match file.read(buf) {  
+                            Ok(_bytes_read) =>addr as isize,  
+                            Err(_) => -1, 
+                        }  
+                    }  
+                    Err(_) => -1, 
+                }  
+            }else{
+                addr as isize
+            }
+        }
+        Err(_)=> -1
+    };
+    a */
 }
 
 fn sys_openat(dfd: c_int, fname: *const c_char, flags: c_int, mode: api::ctypes::mode_t) -> isize {
