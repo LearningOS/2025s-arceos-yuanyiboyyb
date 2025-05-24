@@ -189,42 +189,7 @@ fn sys_mmap(
         );
     }
     free_va.as_usize() as isize
-    /* //unimplemented!("no sys_mmap!");
-    let flags = match MmapFlags::from_bits(flags) {
-        Some(flags) => flags,
-        None => return -1, // 直接从 sys_mmap 函数返回
-    };
-    let prot = match MmapProt::from_bits(prot) {
-        Some(prot) => prot,
-        None => return -1, // 直接从 sys_mmap 函数返回
-    };
-    if !flags.contains(MmapFlags::MAP_ANONYMOUS) && fd == 0 {
-        return -1; // 直接从 sys_mmap 函数返回
-    }
-    let mut curr = current_may_uninit().unwrap();
-    let aspace = &curr.task_ext().aspace;
-    let a = match aspace.lock().map_alloc(VirtAddr::from_mut_ptr_of(addr).align_up_4k(), align_up_4k(length), prot.into(), true){
-        Ok(()) =>{
-            if fd!=0{
-                match get_file_like(fd) {  
-                    Ok(file) => {  
-                        let buf = unsafe {   
-                            core::slice::from_raw_parts_mut(addr as *mut u8, length)   
-                        };  
-                        match file.read(buf) {  
-                            Ok(_bytes_read) =>addr as isize,  
-                            Err(_) => -1, 
-                        }  
-                    }  
-                    Err(_) => -1, 
-                }  
-            }else{
-                addr as isize
-            }
-        }
-        Err(_)=> -1
-    };
-    a */
+
 }
 
 fn sys_openat(dfd: c_int, fname: *const c_char, flags: c_int, mode: api::ctypes::mode_t) -> isize {

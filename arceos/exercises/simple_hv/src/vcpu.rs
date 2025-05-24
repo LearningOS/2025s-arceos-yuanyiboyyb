@@ -7,8 +7,8 @@ use super::regs::{GeneralPurposeRegisters, GprIndex};
 /// Hypervisor GPR and CSR state which must be saved/restored when entering/exiting virtualization.
 #[derive(Default)]
 #[repr(C)]
-struct HypervisorCpuState {
-    gprs: GeneralPurposeRegisters,
+pub struct HypervisorCpuState {
+    pub gprs: GeneralPurposeRegisters,
     sstatus: usize,
     scounteren: usize,
     stvec: usize,
@@ -71,7 +71,7 @@ pub struct VmCpuTrapState {
 pub struct VmCpuRegisters {
     // CPU state that's shared between our's and the guest's execution environment. Saved/restored
     // when entering/exiting a VM.
-    hyp_regs: HypervisorCpuState,
+    pub hyp_regs: HypervisorCpuState,
     pub guest_regs: GuestCpuState,
 
     // CPU state that only applies when V=1, e.g. the VS-level CSRs. Saved/restored on activation of
